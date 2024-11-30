@@ -293,7 +293,24 @@ class Visualizador:
         
         plt.tight_layout()
 
-    def correlacion(self, tamano_grafica = (7, 5)):
+    def dataframe_correlación(self):
+        def color_neg_pos(val):
+            if val < -0.5 or val > 0.5:
+                color = "yellow"
+            elif val < 0:
+                color = "red"
+            else:
+                color = "green"
+            return f'color: {color}'
+        
+        df_num, df_cat = self.separar_dataframes()
+
+        df_correlaciones = df_num.corr().T
+        df_styled = df_correlaciones.style.applymap(color_neg_pos)
+        
+        return df_styled
+
+    def heatmap_correlacion(self, tamano_grafica = (7, 5)):
 
         """
         Visualiza la matriz de correlación de un DataFrame utilizando un mapa de calor.
@@ -808,25 +825,46 @@ class GestionOutliersMultivariados:
         return data.drop("outlier", axis = 1)
 
     
-    def eliminar_outliers_abs_70(self,df_lof):
+    def eliminar_outliers_abs(self,df_out):
+
+            indices_a_eliminar = {}
+
+            for index, row in df_out.iterrows():
+                outliers = row.filter(like="outliers")
+            
+                if (outliers == -1).all():
+                    indices_a_eliminar[index] = row
+            
+            df_outliers = pd.DataFrame(index = indices_a_eliminar.keys(),data=indices_a_eliminar.values())
+
+            # Eliminar las filas identificadas
+                
+            df_sin_outliers = self.dataframe.drop(index=indices_a_eliminar.keys())
+            print(f"se han detectado {len(indices_a_eliminar)} columnas con outliers absolutos")
+
+            return df_outliers,df_sin_outliers
+        
+    def eliminar_outliers_porcj(self,df_out,limite = 0.7):
 
         indices_a_eliminar = {}
 
-        for index, row in df_lof.iterrows():
+        for index, row in df_out.iterrows():
             outliers = row.filter(like="outliers")
         
-            if (outliers == -1).all():
+            if (outliers == -1).sum() >= len(outliers) * limite:
                 indices_a_eliminar[index] = row
+
         
-            elif (outliers == -1).sum() >= len(outliers) * 0.7:
-                indices_a_eliminar[index] = row
+        df_outliers = pd.DataFrame(index = indices_a_eliminar.keys(),data=indices_a_eliminar.values())
+        # Eliminar las filas identificadas
+        df_sin_outliers = self.dataframe.drop(index=indices_a_eliminar, inplace=True)
+        print(f"se han eliminado {len(indices_a_eliminar)} columnas")
 
-            df_outliers = pd.DataFrame(index = indices_a_eliminar.keys(),data=indices_a_eliminar.values())
-            # Eliminar las filas identificadas
-            df_sin_outliers = self.dataframe.drop(index=indices_a_eliminar, inplace=True)
-            print(f"se han eliminado {len(indices_a_eliminar)} columnas")
+        return df_outliers,df_sin_outliers
 
-            return df_outliers,df_sin_outliers
+
+
+
         
 
 class ImputarNulos:
