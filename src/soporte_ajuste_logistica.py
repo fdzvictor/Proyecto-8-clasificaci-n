@@ -1,7 +1,11 @@
+
 # Tratamiento de datos
 # -----------------------------------------------------------------------
 import pandas as pd
 import numpy as np
+
+import time
+import psutil
 
 # Visualizaciones
 # -----------------------------------------------------------------------
@@ -15,6 +19,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.model_selection import train_test_split, learning_curve, GridSearchCV, cross_val_score, StratifiedKFold, KFold
+import xgboost as xgb
 from sklearn.metrics import (
     accuracy_score,
     precision_score,
@@ -24,13 +29,14 @@ from sklearn.metrics import (
     cohen_kappa_score,
     confusion_matrix
 )
-import xgboost as xgb
-import pickle
+# import shap
 
 # Para realizar cross validation
 # -----------------------------------------------------------------------
 from sklearn.model_selection import StratifiedKFold, cross_val_score, KFold
 from sklearn.preprocessing import KBinsDiscretizer
+from sklearn.metrics import roc_curve, auc
+
 
 
 class AnalisisModelosClasificacion:
@@ -65,13 +71,13 @@ class AnalisisModelosClasificacion:
 
         # Parámetros predeterminados por modelo
         parametros_default = {
-            "logistic_regression": {[
+            "logistic_regression": [
                 {'penalty': ['l1'], 'solver': ['saga'], 'C': [0.001, 0.01, 0.1, 1, 10, 100], 'max_iter': [10000]},
                 {'penalty': ['l2'], 'solver': ['liblinear'], 'C': [0.001, 0.01, 0.1, 1, 10, 100], 'max_iter': [10000]},
                 {'penalty': ['elasticnet'], 'solver': ['saga'], 'l1_ratio': [0.1, 0.3, 0.5, 0.7, 0.9], 'C': [0.001, 0.01, 0.1, 1, 10, 100], 'max_iter': [10000]},
                 {'penalty': ['none'], 'solver': ['lbfgs'], 'max_iter': [10000]}
                 ]              
-            },
+            ,
             "tree": {
                 'max_depth': [3, 5, 7, 10],
                 'min_samples_split': [2, 5, 10],
@@ -125,7 +131,8 @@ class AnalisisModelosClasificacion:
 
     def calcular_metricas(self, modelo_nombre):
         """
-        Calcula métricas de rendimiento para el modelo seleccionado, incluyendo AUC y Kappa.
+        Calcula métricas de rendimiento para el modelo seleccionado, incluyendo AUC, Kappa,
+        tiempo de computación y núcleos utilizados.
         """
         if modelo_nombre not in self.resultados:
             raise ValueError(f"Modelo '{modelo_nombre}' no reconocido.")
@@ -136,13 +143,19 @@ class AnalisisModelosClasificacion:
         if pred_train is None or pred_test is None:
             raise ValueError(f"Debe ajustar el modelo '{modelo_nombre}' antes de calcular métricas.")
         
-        # Calcular probabilidades para AUC (si el modelo las soporta)
         modelo = self.resultados[modelo_nombre]["mejor_modelo"]
+
+        # Registrar tiempo de ejecución
+        start_time = time.time()
         if hasattr(modelo, "predict_proba"):
             prob_train = modelo.predict_proba(self.X_train)[:, 1]
             prob_test = modelo.predict_proba(self.X_test)[:, 1]
         else:
-            prob_train = prob_test = None  # Si no hay probabilidades, AUC no será calculado
+            prob_train = prob_test = None
+        elapsed_time = time.time() - start_time
+
+        # Registrar núcleos utilizados
+        num_nucleos = getattr(modelo, "n_jobs", psutil.cpu_count(logical=True))
 
         # Métricas para conjunto de entrenamiento
         metricas_train = {
@@ -151,7 +164,9 @@ class AnalisisModelosClasificacion:
             "recall": recall_score(self.y_train, pred_train, average='weighted', zero_division=0),
             "f1": f1_score(self.y_train, pred_train, average='weighted', zero_division=0),
             "kappa": cohen_kappa_score(self.y_train, pred_train),
-            "auc": roc_auc_score(self.y_train, prob_train) if prob_train is not None else None
+            "auc": roc_auc_score(self.y_train, prob_train) if prob_train is not None else None,
+            "time_seconds": elapsed_time,
+            "n_jobs": num_nucleos
         }
 
         # Métricas para conjunto de prueba
@@ -161,11 +176,13 @@ class AnalisisModelosClasificacion:
             "recall": recall_score(self.y_test, pred_test, average='weighted', zero_division=0),
             "f1": f1_score(self.y_test, pred_test, average='weighted', zero_division=0),
             "kappa": cohen_kappa_score(self.y_test, pred_test),
-            "auc": roc_auc_score(self.y_test, prob_test) if prob_test is not None else None
+            "auc": roc_auc_score(self.y_test, prob_test) if prob_test is not None else None,
+            "tiempo_computacion(segundos)": elapsed_time,
+            "nucleos_usados": num_nucleos
         }
 
         # Combinar métricas en un DataFrame
-        return pd.DataFrame({"train": metricas_train, "test": metricas_test})
+        return pd.DataFrame({"train": metricas_train, "test": metricas_test}).T
 
     def plot_matriz_confusion(self, modelo_nombre):
         """
@@ -277,3 +294,6 @@ class AnalisisModelosClasificacion:
         plt.show()
         
         return fpr, tpr, thresholds
+
+
+    
