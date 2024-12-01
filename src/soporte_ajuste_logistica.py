@@ -7,6 +7,8 @@ import numpy as np
 import time
 import psutil
 
+import pickle
+
 # Visualizaciones
 # -----------------------------------------------------------------------
 import seaborn as sns
@@ -36,6 +38,8 @@ from sklearn.metrics import (
 from sklearn.model_selection import StratifiedKFold, cross_val_score, KFold
 from sklearn.preprocessing import KBinsDiscretizer
 from sklearn.metrics import roc_curve, auc
+
+import statsmodels.api as sm
 
 
 
@@ -126,7 +130,7 @@ class AnalisisModelosClasificacion:
         self.resultados[modelo_nombre]["pred_test"] = grid_search.best_estimator_.predict(self.X_test)
 
         # Guardar el modelo
-        with open(f"{nombre_modelo}.pkl", 'wb') as f:
+        with open(f"{nombre_modelo + " " + modelo_nombre}.pkl", 'wb') as f:
             pickle.dump(grid_search.best_estimator_, f)
 
     def calcular_metricas(self, modelo_nombre):
@@ -233,6 +237,8 @@ class AnalisisModelosClasificacion:
             "Importance": importancia
         }).sort_values(by="Importance", ascending=False)
 
+        display(importancia_df)
+
         plt.figure(figsize=(10, 6))
         sns.barplot(x="Importance", y="Feature", data=importancia_df, palette="viridis")
         plt.title(f"Importancia de Características ({modelo_nombre})")
@@ -294,6 +300,30 @@ class AnalisisModelosClasificacion:
         plt.show()
         
         return fpr, tpr, thresholds
+    
+
+        # Función para asignar colores
+    def color_filas_por_modelo(row):
+        if row["modelo"] == "decision tree":
+            return ["background-color: #e6b3e0; color: black"] * len(row)  
+        
+        elif row["modelo"] == "random_forest":
+            return ["background-color: #c2f0c2; color: black"] * len(row) 
+
+        elif row["modelo"] == "gradient_boosting":
+            return ["background-color: #ffd9b3; color: black"] * len(row)  
+
+        elif row["modelo"] == "xgboost":
+            return ["background-color: #f7b3c2; color: black"] * len(row)  
+
+        elif row["modelo"] == "regresion lineal":
+            return ["background-color: #b3d1ff; color: black"] * len(row)  
+        
+        return ["color: black"] * len(row)
+
+
+
+
 
 
     
