@@ -130,7 +130,7 @@ class AnalisisModelosClasificacion:
         self.resultados[modelo_nombre]["pred_test"] = grid_search.best_estimator_.predict(self.X_test)
 
         # Guardar el modelo
-        with open(f"{nombre_modelo + " " + modelo_nombre}.pkl", 'wb') as f:
+        with open(f"{nombre_modelo + "_" + modelo_nombre}.pkl", 'wb') as f:
             pickle.dump(grid_search.best_estimator_, f)
 
     def calcular_metricas(self, modelo_nombre):
