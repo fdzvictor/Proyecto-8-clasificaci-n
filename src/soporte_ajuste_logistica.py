@@ -128,6 +128,7 @@ class AnalisisModelosClasificacion:
         self.resultados[modelo_nombre]["mejor_modelo"] = grid_search.best_estimator_
         self.resultados[modelo_nombre]["pred_train"] = grid_search.best_estimator_.predict(self.X_train)
         self.resultados[modelo_nombre]["pred_test"] = grid_search.best_estimator_.predict(self.X_test)
+        display (grid_search.best_estimator_)
 
         # Guardar el modelo
         with open(f"{nombre_modelo + "_" + modelo_nombre}.pkl", 'wb') as f:
@@ -304,7 +305,7 @@ class AnalisisModelosClasificacion:
 
         # Función para asignar colores
     def color_filas_por_modelo(row):
-        if row["modelo"] == "decision tree":
+        if row["modelo"] == "decision ¡tree":
             return ["background-color: #e6b3e0; color: black"] * len(row)  
         
         elif row["modelo"] == "random_forest":
